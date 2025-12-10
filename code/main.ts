@@ -335,7 +335,6 @@ function main() {
 
     setEventListeners();
 
-    winGame();
     requestAnimationFrame(update);
 }
 

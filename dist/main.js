@@ -291,7 +291,6 @@ function main() {
     initMap();
     disableMobileMapInteractions();
     setEventListeners();
-    winGame();
     requestAnimationFrame(update);
 }
 main();
