@@ -168,7 +168,7 @@ function createPdfModal() {
         maxWidth: '800px',
         height: '80vh',
         borderRadius: '8px',
-        backgroundImage: 'url("/ressources/pictures/background.jpg")',
+        backgroundImage: 'url("ressources/pictures/background.jpg")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -197,7 +197,7 @@ function createPdfModal() {
     header.appendChild(title);
 
     const imgPreview = document.createElement('img');
-    imgPreview.src = '/ressources/pictures/ticket.png';
+    imgPreview.src = 'ressources/pictures/ticket.png';
     Object.assign(imgPreview.style, {
         maxHeight: '54%',
         width: 'auto',
@@ -208,7 +208,7 @@ function createPdfModal() {
 
     // Open PDF on click
     imgPreview.addEventListener('click', () => {
-        window.open('/ressources/ticket.pdf', '_blank');
+        window.open('ressources/ticket.pdf', '_blank');
     });
 
     container.appendChild(header);
@@ -335,6 +335,7 @@ function main() {
 
     setEventListeners();
 
+    winGame();
     requestAnimationFrame(update);
 }
 

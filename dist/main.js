@@ -158,7 +158,7 @@ function createPdfModal() {
         maxWidth: '800px',
         height: '80vh',
         borderRadius: '8px',
-        backgroundImage: 'url("/ressources/pictures/background.jpg")',
+        backgroundImage: 'url("ressources/pictures/background.jpg")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -184,7 +184,7 @@ function createPdfModal() {
     title.style.fontFamily = 'Arial, sans-serif';
     header.appendChild(title);
     const imgPreview = document.createElement('img');
-    imgPreview.src = '/ressources/pictures/ticket.png';
+    imgPreview.src = 'ressources/pictures/ticket.png';
     Object.assign(imgPreview.style, {
         maxHeight: '54%',
         width: 'auto',
@@ -194,7 +194,7 @@ function createPdfModal() {
     });
     // Open PDF on click
     imgPreview.addEventListener('click', () => {
-        window.open('/ressources/ticket.pdf', '_blank');
+        window.open('ressources/ticket.pdf', '_blank');
     });
     container.appendChild(header);
     container.appendChild(imgPreview);
@@ -291,6 +291,7 @@ function main() {
     initMap();
     disableMobileMapInteractions();
     setEventListeners();
+    winGame();
     requestAnimationFrame(update);
 }
 main();
