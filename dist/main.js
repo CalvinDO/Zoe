@@ -13,9 +13,9 @@ let velY = 0;
 // accumulators to preserve fractional/sub-pixel pan amounts
 let panAccumX = 0;
 let panAccumY = 0;
-const ACCEL_SMOOTH = 0.18; // how quickly velocity approaches target while touching (0-1)
-const DECEL_SMOOTH = 0.08; // how quickly velocity decays to zero after release
-const ROTATION_SMOOTH = 0.18; // how quickly plane rotation eases to target (0-1)
+const ACCEL_SMOOTH = 0.05; // how quickly velocity approaches target while touching (0-1)
+const DECEL_SMOOTH = 0.09; // how quickly velocity decays to zero after release
+const ROTATION_SMOOTH = 0.06; // how quickly plane rotation eases to target (0-1)
 let currentRotationDeg = 0; // smoothed rotation
 function initMap() {
     // create a map container if it's not present (index.html includes styles for #map)
