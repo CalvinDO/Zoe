@@ -5,12 +5,15 @@ let xPos: number = 0;
 let yPos: number = 0;
 let deltaX: number = 0;
 let deltaY: number = 0;
-const MAP_VELOCITY: number = 2; // pixels/ms to map movement ratio
+const MAP_VELOCITY: number = 1; // pixels/ms to map movement ratio
 const PLANE_ROTATION_OFFSET: number = 90; // degrees to align image orientation (adjust if image points another direction)
 let lastTimestamp: number = 0;
 // Smoothing / physics
 let velX: number = 0;
 let velY: number = 0;
+// accumulators to preserve fractional/sub-pixel pan amounts
+let panAccumX: number = 0;
+let panAccumY: number = 0;
 const ACCEL_SMOOTH: number = 0.18; // how quickly velocity approaches target while touching (0-1)
 const DECEL_SMOOTH: number = 0.08; // how quickly velocity decays to zero after release
 const ROTATION_SMOOTH: number = 0.18; // how quickly plane rotation eases to target (0-1)
@@ -101,22 +104,6 @@ function storeTouchPosition(event: TouchEvent) {
     deltaY = yPos - centerY;
 }
 
-function createSpeedOverlay() {
-    if (!document.getElementById('speed-overlay')) {
-        const el = document.createElement('div');
-        el.id = 'speed-overlay';
-        el.style.position = 'fixed';
-        el.style.left = '10px';
-        el.style.top = '10px';
-        el.style.padding = '6px 10px';
-        el.style.background = 'rgba(0,0,0,0.5)';
-        el.style.color = '#fff';
-        el.style.fontFamily = 'monospace';
-        el.style.zIndex = '9999';
-        el.textContent = 'Speed: 0.00';
-        document.body.appendChild(el);
-    }
-}
 
 function computeTargetVelocity(magnitude: number) {
     if (isTouching && magnitude > 0.0001) {
@@ -134,16 +121,21 @@ function smoothVelocity(targetX: number, targetY: number) {
 }
 
 function applyPan(map: any) {
-    map.panBy([-velX, -velY], { animate: false, duration: 0 });
-}
+    // accumulate fractional movement so very small velocities aren't lost
+    panAccumX += -velX;
+    panAccumY += -velY;
 
-function updateSpeedOverlay() {
-    const speedEl = document.getElementById('speed-overlay');
-    if (speedEl) {
-        const speed = Math.sqrt(velX * velX + velY * velY);
-        speedEl.textContent = `Speed: ${speed.toFixed(2)}`;
+    // only pan when we've accumulated at least 1 pixel (preserve sign)
+    const intX = panAccumX > 0 ? Math.floor(panAccumX) : Math.ceil(panAccumX);
+    const intY = panAccumY > 0 ? Math.floor(panAccumY) : Math.ceil(panAccumY);
+
+    if (intX !== 0 || intY !== 0) {
+        map.panBy([intX, intY], { animate: false, duration: 0 });
+        panAccumX -= intX;
+        panAccumY -= intY;
     }
 }
+
 
 function updatePlaneRotation(magnitude: number) {
     const plane = document.querySelector('.plane-image') as HTMLElement | null;
@@ -176,7 +168,6 @@ function update(timestamp: number) {
         const target = computeTargetVelocity(magnitude);
         smoothVelocity(target.x, target.y);
         applyPan(map);
-        updateSpeedOverlay();
         updatePlaneRotation(magnitude);
     }
 

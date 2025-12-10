@@ -4,12 +4,15 @@ let xPos = 0;
 let yPos = 0;
 let deltaX = 0;
 let deltaY = 0;
-const MAP_VELOCITY = 2; // pixels/ms to map movement ratio
+const MAP_VELOCITY = 1; // pixels/ms to map movement ratio
 const PLANE_ROTATION_OFFSET = 90; // degrees to align image orientation (adjust if image points another direction)
 let lastTimestamp = 0;
 // Smoothing / physics
 let velX = 0;
 let velY = 0;
+// accumulators to preserve fractional/sub-pixel pan amounts
+let panAccumX = 0;
+let panAccumY = 0;
 const ACCEL_SMOOTH = 0.18; // how quickly velocity approaches target while touching (0-1)
 const DECEL_SMOOTH = 0.08; // how quickly velocity decays to zero after release
 const ROTATION_SMOOTH = 0.18; // how quickly plane rotation eases to target (0-1)
@@ -99,22 +102,6 @@ function storeTouchPosition(event) {
     deltaX = xPos - centerX;
     deltaY = yPos - centerY;
 }
-function createSpeedOverlay() {
-    if (!document.getElementById('speed-overlay')) {
-        const el = document.createElement('div');
-        el.id = 'speed-overlay';
-        el.style.position = 'fixed';
-        el.style.left = '10px';
-        el.style.top = '10px';
-        el.style.padding = '6px 10px';
-        el.style.background = 'rgba(0,0,0,0.5)';
-        el.style.color = '#fff';
-        el.style.fontFamily = 'monospace';
-        el.style.zIndex = '9999';
-        el.textContent = 'Speed: 0.00';
-        document.body.appendChild(el);
-    }
-}
 function computeTargetVelocity(magnitude) {
     if (isTouching && magnitude > 0.0001) {
         const normalizedX = deltaX / magnitude;
@@ -129,13 +116,16 @@ function smoothVelocity(targetX, targetY) {
     velY += (targetY - velY) * smooth;
 }
 function applyPan(map) {
-    map.panBy([-velX, -velY], { animate: false, duration: 0 });
-}
-function updateSpeedOverlay() {
-    const speedEl = document.getElementById('speed-overlay');
-    if (speedEl) {
-        const speed = Math.sqrt(velX * velX + velY * velY);
-        speedEl.textContent = `Speed: ${speed.toFixed(2)}`;
+    // accumulate fractional movement so very small velocities aren't lost
+    panAccumX += -velX;
+    panAccumY += -velY;
+    // only pan when we've accumulated at least 1 pixel (preserve sign)
+    const intX = panAccumX > 0 ? Math.floor(panAccumX) : Math.ceil(panAccumX);
+    const intY = panAccumY > 0 ? Math.floor(panAccumY) : Math.ceil(panAccumY);
+    if (intX !== 0 || intY !== 0) {
+        map.panBy([intX, intY], { animate: false, duration: 0 });
+        panAccumX -= intX;
+        panAccumY -= intY;
     }
 }
 function updatePlaneRotation(magnitude) {
@@ -164,7 +154,6 @@ function update(timestamp) {
         const target = computeTargetVelocity(magnitude);
         smoothVelocity(target.x, target.y);
         applyPan(map);
-        updateSpeedOverlay();
         updatePlaneRotation(magnitude);
     }
     requestAnimationFrame(update);

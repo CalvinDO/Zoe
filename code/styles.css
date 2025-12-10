@@ -24,7 +24,7 @@ html, body {
 
 /* Plane Image */
 .plane-image {
-  width: 100px;
+  width: 90px;
   height: auto;
   object-fit: contain;
   display: block;
