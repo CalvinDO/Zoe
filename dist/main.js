@@ -4,7 +4,7 @@ let xPos = 0;
 let yPos = 0;
 let deltaX = 0;
 let deltaY = 0;
-const MAP_VELOCITY = 1; // pixels/ms to map movement ratio
+const MAP_VELOCITY = 1 * 10; // pixels/ms to map movement ratio
 const PLANE_ROTATION_OFFSET = 90; // degrees to align image orientation (adjust if image points another direction)
 let lastTimestamp = 0;
 // Smoothing / physics
@@ -17,6 +17,11 @@ const ACCEL_SMOOTH = 0.05; // how quickly velocity approaches target while touch
 const DECEL_SMOOTH = 0.09; // how quickly velocity decays to zero after release
 const ROTATION_SMOOTH = 0.06; // how quickly plane rotation eases to target (0-1)
 let currentRotationDeg = 0; // smoothed rotation
+// Helsinki coordinates and proximity detection
+const HELSINKI_LAT = 60.1699;
+const HELSINKI_LON = 24.9384;
+const PROXIMITY_THRESHOLD_KM = 16; // trigger when within 5 km
+let pdfModalShown = false;
 function initMap() {
     // create a map container if it's not present (index.html includes styles for #map)
     if (!document.getElementById('map')) {
@@ -102,6 +107,100 @@ function storeTouchPosition(event) {
     deltaX = xPos - centerX;
     deltaY = yPos - centerY;
 }
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+function createPdfModal() {
+    if (document.getElementById('pdf-modal'))
+        return; // already exists
+    // Remove global touch event listeners
+    window.removeEventListener('touchstart', onTouchStart, { passive: false });
+    window.removeEventListener('touchmove', onTouchMove, { passive: false });
+    window.removeEventListener('touchend', onTouchEnd, { passive: false });
+    const modal = document.createElement('div');
+    modal.id = 'pdf-modal';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    modal.style.display = 'none';
+    modal.style.zIndex = '10000';
+    modal.style.flexDirection = 'column';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.padding = '20px';
+    modal.style.boxSizing = 'border-box';
+    const container = document.createElement('div');
+    container.style.width = '100%';
+    container.style.maxWidth = '800px';
+    container.style.height = '80vh';
+    container.style.backgroundColor = '#fff';
+    container.style.borderRadius = '8px';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.overflow = 'hidden';
+    const header = document.createElement('div');
+    header.style.padding = '10px';
+    header.style.backgroundColor = '#f0f0f0';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'center';
+    header.style.alignItems = 'center';
+    const title = document.createElement('h2');
+    title.textContent = 'Ticket';
+    title.style.margin = '0';
+    title.style.fontSize = '18px';
+    header.appendChild(title);
+    // Image preview
+    const imgPreview = document.createElement('img');
+    imgPreview.src = '../ressources/pictures/ticket.png';
+    imgPreview.style.flex = '1';
+    imgPreview.style.width = '100%';
+    imgPreview.style.objectFit = 'contain';
+    imgPreview.style.borderTop = '1px solid #ddd';
+    imgPreview.style.cursor = 'pointer';
+    // On click, open the PDF in a new tab
+    imgPreview.addEventListener('click', () => {
+        window.open('../ressources/ticket.pdf', '_blank');
+    });
+    container.appendChild(header);
+    container.appendChild(imgPreview);
+    modal.appendChild(container);
+    modal.style.display = 'flex';
+    document.body.appendChild(modal);
+}
+function showPdfModal() {
+    if (!pdfModalShown) {
+        createPdfModal();
+        pdfModalShown = true;
+    }
+    const modal = document.getElementById('pdf-modal');
+    if (modal)
+        modal.style.display = 'flex';
+}
+function closePdfModal() {
+    const modal = document.getElementById('pdf-modal');
+    if (modal)
+        modal.style.display = 'none';
+}
+function checkProximityToHelsinki(map) {
+    // Get the map center in lat/lon
+    const center = map.getCenter();
+    const distance = haversineDistance(center.lat, center.lng, HELSINKI_LAT, HELSINKI_LON);
+    if (distance <= PROXIMITY_THRESHOLD_KM && !pdfModalShown) {
+        showPdfModal();
+    }
+}
 function computeTargetVelocity(magnitude) {
     if (isTouching && magnitude > 0.0001) {
         const normalizedX = deltaX / magnitude;
@@ -155,6 +254,7 @@ function update(timestamp) {
         smoothVelocity(target.x, target.y);
         applyPan(map);
         updatePlaneRotation(magnitude);
+        checkProximityToHelsinki(map);
     }
     requestAnimationFrame(update);
 }
