@@ -4,7 +4,7 @@ let xPos = 0;
 let yPos = 0;
 let deltaX = 0;
 let deltaY = 0;
-const MAP_VELOCITY = 1 * 10; // pixels/ms to map movement ratio
+const MAP_VELOCITY = 1.3; // pixels/ms to map movement ratio
 const PLANE_ROTATION_OFFSET = 90; // degrees to align image orientation (adjust if image points another direction)
 let lastTimestamp = 0;
 // Smoothing / physics
@@ -20,8 +20,9 @@ let currentRotationDeg = 0; // smoothed rotation
 // Helsinki coordinates and proximity detection
 const HELSINKI_LAT = 60.1699;
 const HELSINKI_LON = 24.9384;
-const PROXIMITY_THRESHOLD_KM = 16; // trigger when within 5 km
+const PROXIMITY_THRESHOLD_KM = 20;
 let pdfModalShown = false;
+let gameWon = false;
 function initMap() {
     // create a map container if it's not present (index.html includes styles for #map)
     if (!document.getElementById('map')) {
@@ -121,62 +122,83 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 function createPdfModal() {
     if (document.getElementById('pdf-modal'))
-        return; // already exists
-    // Remove global touch event listeners
-    window.removeEventListener('touchstart', onTouchStart, { passive: false });
-    window.removeEventListener('touchmove', onTouchMove, { passive: false });
-    window.removeEventListener('touchend', onTouchEnd, { passive: false });
+        return;
+    // Remove global touch listeners
+    window.removeEventListener('touchstart', onTouchStart);
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', onTouchEnd);
     const modal = document.createElement('div');
     modal.id = 'pdf-modal';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    modal.style.display = 'none';
-    modal.style.zIndex = '10000';
-    modal.style.flexDirection = 'column';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.padding = '20px';
-    modal.style.boxSizing = 'border-box';
+    Object.assign(modal.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        boxSizing: 'border-box',
+        zIndex: '10000',
+        pointerEvents: 'auto'
+    });
+    // Close modal when clicking outside container
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+            setEventListeners(); // restore global touch listeners
+        }
+    });
     const container = document.createElement('div');
-    container.style.width = '100%';
-    container.style.maxWidth = '800px';
-    container.style.height = '80vh';
-    container.style.backgroundColor = '#fff';
-    container.style.borderRadius = '8px';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.overflow = 'hidden';
+    Object.assign(container.style, {
+        position: 'relative',
+        width: '100%',
+        maxWidth: '800px',
+        height: '80vh',
+        borderRadius: '8px',
+        backgroundImage: 'url("/ressources/pictures/background.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        overflow: 'hidden'
+    });
     const header = document.createElement('div');
-    header.style.padding = '10px';
-    header.style.backgroundColor = '#f0f0f0';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'center';
-    header.style.alignItems = 'center';
+    Object.assign(header.style, {
+        padding: '10px',
+        backgroundColor: 'rgba(240, 240, 240, 0.8)', // slightly transparent so background shows
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+    });
     const title = document.createElement('h2');
-    title.textContent = 'Ticket';
+    title.textContent = '🎉 Viel Spaß in Helsinki, Zoé 🎉';
     title.style.margin = '0';
     title.style.fontSize = '18px';
+    title.style.fontFamily = 'Arial, sans-serif';
     header.appendChild(title);
-    // Image preview
     const imgPreview = document.createElement('img');
-    imgPreview.src = '../ressources/pictures/ticket.png';
-    imgPreview.style.flex = '1';
-    imgPreview.style.width = '100%';
-    imgPreview.style.objectFit = 'contain';
-    imgPreview.style.borderTop = '1px solid #ddd';
-    imgPreview.style.cursor = 'pointer';
-    // On click, open the PDF in a new tab
+    imgPreview.src = '/ressources/pictures/ticket.png';
+    Object.assign(imgPreview.style, {
+        maxHeight: '54%',
+        width: 'auto',
+        margin: 'auto',
+        cursor: 'pointer',
+        pointerEvents: 'auto'
+    });
+    // Open PDF on click
     imgPreview.addEventListener('click', () => {
-        window.open('../ressources/ticket.pdf', '_blank');
+        window.open('/ressources/ticket.pdf', '_blank');
     });
     container.appendChild(header);
     container.appendChild(imgPreview);
     modal.appendChild(container);
-    modal.style.display = 'flex';
     document.body.appendChild(modal);
 }
 function showPdfModal() {
@@ -198,8 +220,12 @@ function checkProximityToHelsinki(map) {
     const center = map.getCenter();
     const distance = haversineDistance(center.lat, center.lng, HELSINKI_LAT, HELSINKI_LON);
     if (distance <= PROXIMITY_THRESHOLD_KM && !pdfModalShown) {
-        showPdfModal();
+        winGame();
     }
+}
+function winGame() {
+    gameWon = true;
+    showPdfModal();
 }
 function computeTargetVelocity(magnitude) {
     if (isTouching && magnitude > 0.0001) {
@@ -255,6 +281,9 @@ function update(timestamp) {
         applyPan(map);
         updatePlaneRotation(magnitude);
         checkProximityToHelsinki(map);
+    }
+    if (gameWon) {
+        return;
     }
     requestAnimationFrame(update);
 }

@@ -5,7 +5,7 @@ let xPos: number = 0;
 let yPos: number = 0;
 let deltaX: number = 0;
 let deltaY: number = 0;
-const MAP_VELOCITY: number = 1 * 10; // pixels/ms to map movement ratio
+const MAP_VELOCITY: number = 1.3; // pixels/ms to map movement ratio
 const PLANE_ROTATION_OFFSET: number = 90; // degrees to align image orientation (adjust if image points another direction)
 let lastTimestamp: number = 0;
 // Smoothing / physics
@@ -22,8 +22,10 @@ let currentRotationDeg: number = 0; // smoothed rotation
 // Helsinki coordinates and proximity detection
 const HELSINKI_LAT: number = 60.1699;
 const HELSINKI_LON: number = 24.9384;
-const PROXIMITY_THRESHOLD_KM: number = 16; // trigger when within 5 km
+const PROXIMITY_THRESHOLD_KM: number = 20;
 let pdfModalShown: boolean = false;
+
+let gameWon: boolean = false;
 
 function initMap() {
     // create a map container if it's not present (index.html includes styles for #map)
@@ -126,72 +128,95 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 function createPdfModal() {
-    if (document.getElementById('pdf-modal')) return; // already exists
+    if (document.getElementById('pdf-modal')) return;
 
-    // Remove global touch event listeners
-    window.removeEventListener('touchstart', onTouchStart);
-    window.removeEventListener('touchmove', onTouchMove);
-    window.removeEventListener('touchend', onTouchEnd);
-   
+    // Remove global touch listeners
+    window.removeEventListener('touchstart', onTouchStart as EventListener);
+    window.removeEventListener('touchmove', onTouchMove as EventListener);
+    window.removeEventListener('touchend', onTouchEnd as EventListener);
+
     const modal = document.createElement('div');
     modal.id = 'pdf-modal';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    modal.style.display = 'none';
-    modal.style.zIndex = '10000';
-    modal.style.flexDirection = 'column';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.padding = '20px';
-    modal.style.boxSizing = 'border-box';
+    Object.assign(modal.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        boxSizing: 'border-box',
+        zIndex: '10000',
+        pointerEvents: 'auto'
+    });
+
+    // Close modal when clicking outside container
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+            setEventListeners(); // restore global touch listeners
+        }
+    });
 
     const container = document.createElement('div');
-    container.style.width = '100%';
-    container.style.maxWidth = '800px';
-    container.style.height = '80vh';
-    container.style.backgroundColor = '#fff';
-    container.style.borderRadius = '8px';
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
-    container.style.overflow = 'hidden';
+    Object.assign(container.style, {
+        position: 'relative',
+        width: '100%',
+        maxWidth: '800px',
+        height: '80vh',
+        borderRadius: '8px',
+        backgroundImage: 'url("/ressources/pictures/background.jpg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        overflow: 'hidden'
+    });
 
     const header = document.createElement('div');
-    header.style.padding = '10px';
-    header.style.backgroundColor = '#f0f0f0';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'center';
-    header.style.alignItems = 'center';
+    Object.assign(header.style, {
+        padding: '10px',
+        backgroundColor: 'rgba(240, 240, 240, 0.8)', // slightly transparent so background shows
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+    });
 
     const title = document.createElement('h2');
-    title.textContent = 'Ticket';
+    title.textContent = '🎉 Viel Spaß in Helsinki, Zoé 🎉';
     title.style.margin = '0';
     title.style.fontSize = '18px';
+    title.style.fontFamily = 'Arial, sans-serif';
     header.appendChild(title);
 
-    // Image preview
     const imgPreview = document.createElement('img');
-    imgPreview.src = '../ressources/pictures/ticket.png';
-    imgPreview.style.flex = '1';
-    imgPreview.style.width = '100%';
-    imgPreview.style.objectFit = 'contain';
-    imgPreview.style.borderTop = '1px solid #ddd';
-    imgPreview.style.cursor = 'pointer';
+    imgPreview.src = '/ressources/pictures/ticket.png';
+    Object.assign(imgPreview.style, {
+        maxHeight: '54%',
+        width: 'auto',
+        margin: 'auto',
+        cursor: 'pointer',
+        pointerEvents: 'auto'
+    });
 
-    // On click, open the PDF in a new tab
+    // Open PDF on click
     imgPreview.addEventListener('click', () => {
-        window.open('../ressources/ticket.pdf', '_blank');
+        window.open('/ressources/ticket.pdf', '_blank');
     });
 
     container.appendChild(header);
     container.appendChild(imgPreview);
     modal.appendChild(container);
-    modal.style.display = 'flex';
     document.body.appendChild(modal);
 }
+
 
 
 
@@ -217,8 +242,13 @@ function checkProximityToHelsinki(map: any) {
     const distance = haversineDistance(center.lat, center.lng, HELSINKI_LAT, HELSINKI_LON);
 
     if (distance <= PROXIMITY_THRESHOLD_KM && !pdfModalShown) {
-        showPdfModal();
+        winGame();
     }
+}
+
+function winGame() {
+    gameWon = true;
+    showPdfModal();
 }
 
 function computeTargetVelocity(magnitude: number) {
@@ -272,6 +302,7 @@ function updatePlaneRotation(magnitude: number) {
 
 
 function update(timestamp: number) {
+
     // requestAnimationFrame passes a high-res timestamp
     if (!timestamp) timestamp = Date.now();
     const dt = lastTimestamp ? Math.min(40, timestamp - lastTimestamp) : 16; // clamp dt (ms)
@@ -286,6 +317,10 @@ function update(timestamp: number) {
         applyPan(map);
         updatePlaneRotation(magnitude);
         checkProximityToHelsinki(map);
+    }
+
+    if (gameWon) {
+        return;
     }
 
     requestAnimationFrame(update);
