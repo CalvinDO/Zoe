@@ -1,5 +1,16 @@
 {
   "dependencies": {
     "osm-api": "^3.3.1"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "lint": "eslint \"code/**/*.{ts,tsx,js,jsx}\" --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint \"code/**/*.{ts,tsx,js,jsx}\" --ext .ts,.tsx,.js,.jsx --fix"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3"
   }
 }
