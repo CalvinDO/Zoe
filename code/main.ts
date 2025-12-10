@@ -9,7 +9,7 @@ function initMap() {
     }
 
     // Center over Europe (approximate centroid) with a zoom that shows most of Europe
-    const map = L.map('map').setView([54.5260, 15.2551], 4);
+    const map = L.map('map').setView([47.447915, 8.562177], 17);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,

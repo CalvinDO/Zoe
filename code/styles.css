@@ -1,0 +1,31 @@
+/* Reset and Full Screen */
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Map Container */
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+/* Plane Overlay - Fixed Center */
+.plane-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  pointer-events: none;
+}
+
+/* Plane Image */
+.plane-image {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
